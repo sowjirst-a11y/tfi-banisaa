@@ -1,0 +1,292 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TFFy Bani - Super Gaming Hub</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#090d20;color:white;
+ font-family:Arial,sans-serif;text-align:center;
+}
+header{
+ padding:22px;background:linear-gradient(90deg,#ff1744,#7928ca,#087cff);
+}
+h1{margin:0;font-size:35px}
+header p{margin:8px 0 0}
+.container{max-width:950px;margin:auto;padding:18px}
+.panel{
+ background:#151d38;padding:18px;border-radius:18px;
+ margin:15px 0;box-shadow:0 5px 20px #0007;
+}
+button{
+ border:0;border-radius:12px;padding:13px 19px;
+ margin:7px;background:#ffb300;color:#171717;
+ font-weight:bold;font-size:15px;cursor:pointer;
+}
+button:hover{transform:scale(1.04)}
+.hero{
+ display:inline-block;background:#263456;
+ border:2px solid #53658c;border-radius:13px;
+ padding:14px;margin:5px;cursor:pointer;min-width:115px;
+}
+.hero.selected{border:3px solid #ffca28;background:#394b75}
+.hero span{font-size:30px;display:block}
+.games{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+ gap:12px;
+}
+.game{
+ background:#25345a;border-radius:15px;padding:20px;
+ cursor:pointer;font-size:19px;
+}
+.game span{font-size:38px;display:block;margin-bottom:10px}
+canvas{
+ width:100%;max-width:800px;height:auto;
+ background:#10182c;border:3px solid #6576a5;
+ border-radius:12px;display:block;margin:12px auto;
+ touch-action:none;
+}
+#gameArea{display:none}
+#instructions{color:#d4defb}
+#score{font-size:22px;color:#ffca28}
+footer{padding:25px;color:#aab4d0}
+</style>
+</head>
+<body>
+
+<header>
+<h1>🎮 TFFy Bani</h1>
+<p>ALL INDIA SUPERSTAR GAMING HUB</p>
+</header>
+
+<div class="container">
+
+<div class="panel" id="home">
+<h2>🌟 Choose Your Superstar</h2>
+<p>Select your favourite character!</p>
+<div id="heroes"></div>
+
+<h2>🔥 Select Your Game</h2>
+<div class="games">
+<div class="game" onclick="startGame('race')">
+<span>🏎️</span>Hero Car Racing
+</div>
+<div class="game" onclick="startGame('fly')">
+<span>🐦</span>Flappy Hero
+</div>
+<div class="game" onclick="startGame('dash')">
+<span>🔷</span>Geometry Dash
+</div>
+</div>
+</div>
+
+<div class="panel" id="gameArea">
+<h2 id="gameTitle">Game</h2>
+<div id="score">Score: 0</div>
+<p id="instructions">Use your keyboard or touch controls.</p>
+<canvas id="canvas" width="800" height="450"></canvas>
+<div>
+<button onclick="startGame(currentGame)">🔄 Restart</button>
+<button onclick="goHome()">🏠 Home</button>
+<button id="actionButton" onclick="action()">PLAY</button>
+</div>
+<p>Keyboard: Arrow keys / Space</p>
+</div>
+
+<div class="panel">
+<h2>🏆 TFFy Bani Championship</h2>
+<p>Play all three games and try to beat your high score!</p>
+<div id="bestScore">Best Score: 0</div>
+</div>
+
+</div>
+
+<footer>
+TFFy Bani Gaming Hub | Unofficial fan-made game concept
+</footer>
+
+<script>
+const roster=[
+ {name:"Prabhas",region:"South",emoji:"👑"},
+ {name:"Mauli",region:"South",emoji:"🔥"},
+ {name:"Duy",region:"East",emoji:"⚡"},
+ {name:"Prabhu",region:"South",emoji:"🎬"},
+ {name:"Ranganathan",region:"South",emoji:"⭐"},
+ {name:"North Hero",region:"North",emoji:"🦁"},
+ {name:"West Hero",region:"West",emoji:"🚀"},
+ {name:"East Hero",region:"East",emoji:"🐯"}
+];
+
+let selected=0,currentGame="",running=false;
+let score=0,best=Number(localStorage.getItem("tffyBest")||0);
+let player={x:390,y:350,v:0};
+let obstacles=[],frame=0,speed=4;
+let keys={};
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+
+document.getElementById("bestScore").textContent="Best Score: "+best;
+
+function renderHeroes(){
+ document.getElementById("heroes").innerHTML=roster.map((h,i)=>`
+ <div class="hero ${i===selected?'selected':''}" onclick="selectHero(${i})">
+ <span>${h.emoji}</span><b>${h.name}</b><br>
+ <small>${h.region} India</small>
+ </div>`).join("");
+}
+function selectHero(i){selected=i;renderHeroes()}
+renderHeroes();
+
+function startGame(type){
+ currentGame=type;running=true;score=0;frame=0;
+ obstacles=[];speed=4;
+ player={x:390,y:type==="fly"?220:350,v:0};
+ document.getElementById("home").style.display="none";
+ document.getElementById("gameArea").style.display="block";
+ document.getElementById("gameTitle").textContent=
+ type==="race"?"🏎️ Hero Car Racing":
+ type==="fly"?"🐦 Flappy Hero":"🔷 Geometry Dash";
+ document.getElementById("instructions").textContent=
+ type==="race"?"Use LEFT and RIGHT arrows to dodge traffic.":
+ type==="fly"?"Press SPACE or tap to fly through the gaps.":
+ "Press SPACE or UP to jump over obstacles.";
+ document.getElementById("actionButton").textContent="PLAY";
+ draw();
+}
+function goHome(){
+ running=false;
+ document.getElementById("home").style.display="block";
+ document.getElementById("gameArea").style.display="none";
+}
+function action(){
+ if(!running){startGame(currentGame);return}
+ if(currentGame==="fly")player.v=-7;
+ if(currentGame==="dash"&&player.y>=350)player.v=-13;
+}
+document.addEventListener("keydown",e=>{
+ keys[e.key]=true;
+ if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();
+ if(e.key===" "||e.key==="ArrowUp")action();
+});
+document.addEventListener("keyup",e=>keys[e.key]=false);
+canvas.addEventListener("pointerdown",()=>action());
+
+function draw(){
+ if(!running)return;
+ ctx.clearRect(0,0,800,450);
+ frame++;
+ if(currentGame==="race")race();
+ if(currentGame==="fly")fly();
+ if(currentGame==="dash")dash();
+ document.getElementById("score").textContent="Score: "+score;
+ if(score>best){
+ best=score;
+ localStorage.setItem("tffyBest",best);
+ document.getElementById("bestScore").textContent="Best Score: "+best;
+ }
+ requestAnimationFrame(draw);
+}
+
+function background(){
+ ctx.fillStyle="#14213d";ctx.fillRect(0,0,800,450);
+ ctx.fillStyle="#263653";ctx.fillRect(150,0,500,450);
+ ctx.fillStyle="#ffca28";
+ for(let y=-30;y<450;y+=90){
+ ctx.fillRect(395,y+(frame*speed)%90,10,45);
+ }
+}
+function car(x,y,color){
+ ctx.fillStyle=color;
+ ctx.fillRect(x,y,48,75);
+ ctx.fillStyle="#9eeaff";ctx.fillRect(x+7,y+12,34,20);
+ ctx.fillStyle="#111";ctx.fillRect(x+3,y+55,9,17);
+ ctx.fillRect(x+36,y+55,9,17);
+}
+function gameOver(){
+ running=false;
+ document.getElementById("instructions").textContent=
+ "GAME OVER! Final score: "+score+". Press Restart to play again.";
+ document.getElementById("actionButton").textContent="PLAY AGAIN";
+}
+
+function race(){
+ background();
+ ctx.fillStyle="#fff";ctx.font="17px Arial";
+ ctx.fillText("HIGHWAY RACE",20,30);
+ if(keys.ArrowLeft)player.x-=6;
+ if(keys.ArrowRight)player.x+=6;
+ player.x=Math.max(165,Math.min(585,player.x));
+ if(frame%65===0){
+ obstacles.push({x:190+Math.random()*390,y:-80});
+ }
+ obstacles.forEach(o=>{
+ o.y+=speed;
+ car(o.x,o.y,"#ff4141");
+ if(o.y>280&&o.y<410&&Math.abs(o.x-player.x)<43)gameOver();
+ });
+ obstacles=obstacles.filter(o=>o.y<500);
+ car(player.x,350,"#ffca28");
+ if(frame%10===0)score++;
+ speed=4+Math.min(4,score/100);
+}
+
+function fly(){
+ ctx.fillStyle="#6bc6e9";ctx.fillRect(0,0,800,450);
+ ctx.fillStyle="#fff";ctx.font="22px Arial";
+ ctx.fillText("SUPER FLYER",20,35);
+ if(frame%100===0){
+ let gap=110+Math.random()*190;
+ obstacles.push({x:810,gap:gap});
+ }
+ player.v+=0.35;player.y+=player.v;
+ ctx.fillStyle="#ffca28";
+ ctx.beginPath();ctx.arc(150,player.y,19,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#fff";ctx.fillRect(155,player.y-8,7,7);
+ obstacles.forEach(o=>{
+ o.x-=4;
+ ctx.fillStyle="#228b55";
+ ctx.fillRect(o.x,0,65,o.gap-75);
+ ctx.fillRect(o.x,o.gap+75,65,450);
+ if(150+19>o.x&&150-19<o.x+65&&
+ (player.y-19<o.gap-75||player.y+19>o.gap+75))gameOver();
+ if(!o.passed&&o.x<150){o.passed=true;score+=10}
+ });
+ obstacles=obstacles.filter(o=>o.x>-80);
+ if(player.y<0||player.y>450)gameOver();
+}
+
+function dash(){
+ ctx.fillStyle="#10182c";ctx.fillRect(0,0,800,450);
+ ctx.fillStyle="#394c77";ctx.fillRect(0,390,800,60);
+ ctx.strokeStyle="#7185c0";ctx.lineWidth=3;
+ for(let x=0;x<800;x+=40){
+ ctx.beginPath();ctx.moveTo(x,390);ctx.lineTo(x,450);ctx.stroke();
+ }
+ if(frame%75===0){
+ obstacles.push({x:820,y:350,size:40+Math.random()*15});
+ }
+ if((keys.ArrowUp||keys[" "])&&player.y>=350)player.v=-13;
+ player.v+=0.7;player.y+=player.v;
+ if(player.y>350){player.y=350;player.v=0}
+ ctx.fillStyle="#ffca28";
+ ctx.save();ctx.translate(150,player.y);ctx.rotate(player.y<350?frame*.09:0);
+ ctx.fillRect(-22,-22,44,44);ctx.restore();
+ obstacles.forEach(o=>{
+ o.x-=6;
+ ctx.fillStyle="#ff3c77";
+ ctx.beginPath();
+ ctx.moveTo(o.x,390);ctx.lineTo(o.x+o.size/2,390-o.size);
+ ctx.lineTo(o.x+o.size,390);ctx.fill();
+ if(150+20>o.x&&150-20<o.x+o.size&&
+ player.y+20>390-o.size)gameOver();
+ if(!o.passed&&o.x<150){o.passed=true;score+=10}
+ });
+ obstacles=obstacles.filter(o=>o.x>-70);
+ if(frame%10===0)score++;
+}
+</script>
+</body>
+</html>
